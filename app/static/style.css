@@ -1,0 +1,18 @@
+:root { --bg:#f7f7f5; --fg:#1d1d1b; --muted:#6b6b66; --card:#fff; --line:#e3e2dd; --ok:#1f7a4d; --warn:#9a6b00; --bad:#b3261e; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#151514; --fg:#ecebe6; --muted:#a3a29c; --card:#1f1f1d; --line:#33332f; --ok:#5fcf98; --warn:#e3b341; --bad:#ff8a80; }
+}
+* { box-sizing: border-box; }
+body { margin:0; font:15px/1.5 system-ui, sans-serif; background:var(--bg); color:var(--fg); }
+header { display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px; padding:16px 24px; border-bottom:1px solid var(--line); }
+h1 { font-size:20px; margin:0; } h2 { font-size:16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+.who { color:var(--muted); }
+main { max-width:960px; margin:0 auto; padding:16px; }
+.cards { list-style:none; padding:0; display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:4px; }
+.role { color:var(--muted); text-transform:capitalize; }
+.badge { font-size:12px; font-weight:600; border:1px solid currentColor; border-radius:999px; padding:1px 8px; width:fit-content; }
+.ok { color:var(--ok); } .warn { color:var(--warn); } .bad { color:var(--bad); }
+table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; display:block; overflow-x:auto; }
+th, td { text-align:left; padding:6px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
+th { color:var(--muted); font-weight:600; }

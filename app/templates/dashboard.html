@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Homelab Harness</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <h1>Homelab Harness</h1>
+  <span class="who">Signed in as <strong>{{ user.name }}</strong></span>
+</header>
+<main>
+  <section>
+    <h2>Agents</h2>
+    <ul class="cards">
+      {% for p in providers %}
+      <li class="card">
+        <strong>{{ p.label }}</strong>
+        <span class="role">{{ p.role }}</span>
+        <span class="badge {{ 'ok' if p.configured else 'warn' }}">{{ 'key loaded' if p.configured else 'no key' }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  <section>
+    <h2>Audit log
+      <span class="badge {{ 'ok' if chain.ok else 'bad' }}">
+        {% if chain.ok %}chain intact ({{ chain.entries }} entries){% else %}chain broken at #{{ chain.broken_at }}{% endif %}
+      </span>
+    </h2>
+    <table>
+      <thead><tr><th>#</th><th>Time (UTC)</th><th>Actor</th><th>Action</th></tr></thead>
+      <tbody>
+      {% for e in entries %}
+        <tr><td>{{ e.id }}</td><td>{{ e.ts }}</td><td>{{ e.actor }}</td><td>{{ e.action }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</main>
+</body>
+</html>
