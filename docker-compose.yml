@@ -1,0 +1,56 @@
+# Multi-Agent Homelab harness.
+# No ports are published: the only way in is through Traefik + Authelia.
+services:
+  harness:
+    build: .
+    image: multi-agent-homelab:local
+    container_name: harness
+    restart: unless-stopped
+    environment:
+      HARNESS_ALLOWED_USERS: ${HARNESS_ALLOWED_USERS:?set HARNESS_ALLOWED_USERS in .env}
+      HARNESS_TRUSTED_PROXIES: ${HARNESS_TRUSTED_PROXIES:?set HARNESS_TRUSTED_PROXIES in .env}
+      HARNESS_REQUIRED_GROUP: ${HARNESS_REQUIRED_GROUP:-}
+    secrets:
+      - claude_api_key
+      - gemini_api_key
+      - grok_api_key
+    volumes:
+      - harness-data:/data
+    networks:
+      - proxy
+    # Hardening: read-only filesystem, no Linux capabilities, no privilege escalation.
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    user: "10001:10001"
+    # Keep it light on older hardware.
+    mem_limit: 256m
+    cpus: 0.5
+    pids_limit: 128
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${TRAEFIK_NETWORK:-proxy}
+      - traefik.http.routers.harness.rule=Host(`${HARNESS_HOST:?set HARNESS_HOST in .env}`)
+      - traefik.http.routers.harness.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
+      - traefik.http.routers.harness.tls=true
+      - traefik.http.routers.harness.middlewares=${AUTHELIA_MIDDLEWARE:-authelia@docker}
+      - traefik.http.services.harness.loadbalancer.server.port=8080
+
+volumes:
+  harness-data:
+
+networks:
+  proxy:
+    external: true
+    name: ${TRAEFIK_NETWORK:-proxy}
+
+secrets:
+  claude_api_key:
+    file: ./secrets/claude_api_key
+  gemini_api_key:
+    file: ./secrets/gemini_api_key
+  grok_api_key:
+    file: ./secrets/grok_api_key
