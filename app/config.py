@@ -31,6 +31,12 @@ class Settings:
     # IPs/CIDRs of the reverse proxy (Traefik). Identity headers are only
     # trusted on connections that come directly from one of these.
     trusted_proxies: list[Network] = field(default_factory=list)
+    # Header names the auth proxy uses for the verified identity.
+    # Authelia: Remote-User / Remote-Groups / Remote-Email (the defaults).
+    # Authentik: X-authentik-username / X-authentik-groups / X-authentik-email.
+    user_header: str = "Remote-User"
+    groups_header: str = "Remote-Groups"
+    email_header: str = "Remote-Email"
     db_path: Path = Path("/data/harness.db")
     secrets_dir: Path = Path("/run/secrets")
 
@@ -40,6 +46,9 @@ class Settings:
             allowed_users=frozenset(u.lower() for u in _csv(os.getenv("HARNESS_ALLOWED_USERS"))),
             required_group=os.getenv("HARNESS_REQUIRED_GROUP") or None,
             trusted_proxies=_networks(os.getenv("HARNESS_TRUSTED_PROXIES")),
+            user_header=os.getenv("HARNESS_USER_HEADER") or "Remote-User",
+            groups_header=os.getenv("HARNESS_GROUPS_HEADER") or "Remote-Groups",
+            email_header=os.getenv("HARNESS_EMAIL_HEADER") or "Remote-Email",
             db_path=Path(os.getenv("HARNESS_DB_PATH", "/data/harness.db")),
             secrets_dir=Path(os.getenv("HARNESS_SECRETS_DIR", "/run/secrets")),
         )

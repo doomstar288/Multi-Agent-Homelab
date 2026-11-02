@@ -2,7 +2,7 @@
 
 A self-hosted harness where Claude, Gemini, and Grok monitor and help manage a homelab, with every change approved by a human.
 
-It runs as a single lightweight container on the homelab server, behind Traefik and Authelia. No ports are published and nothing is exposed to the internet by the harness itself.
+It runs as a single lightweight container on the homelab server, behind Traefik and a forward-auth proxy (Authelia or Authentik). No ports are published and nothing is exposed to the internet by the harness itself.
 
 ## Roadmap
 
@@ -18,7 +18,9 @@ browser ──► Traefik ──► Authelia (login + 2FA) ──► Traefik ─
                          sets Remote-User / Remote-Groups
 ```
 
-The harness believes the `Remote-User` header **only** when the connection comes directly from Traefik's IP (`HARNESS_TRUSTED_PROXIES`), and only for usernames in `HARNESS_ALLOWED_USERS`. Anything else gets a 403. With either setting empty, everyone is refused.
+Authentik works the same way with its `X-authentik-*` headers (see [Using Authentik](#using-authentik)).
+
+The harness believes the identity header **only** when the connection comes directly from Traefik's IP (`HARNESS_TRUSTED_PROXIES`), and only for usernames in `HARNESS_ALLOWED_USERS`. Anything else gets a 403. With either setting empty, everyone is refused.
 
 ## Setup
 
@@ -54,12 +56,35 @@ The harness believes the `Remote-User` header **only** when the connection comes
 
 5. Open `https://<HARNESS_HOST>`. You should land on the dashboard after Authelia, with each agent showing **key loaded** or **no key**, and the audit log showing a `startup` entry with **chain intact**.
 
+## Using Authentik
+
+Authentik's forward-auth returns `X-authentik-username`, `X-authentik-groups` (pipe separated) and `X-authentik-email`, and **never** sets `Remote-User`. Because Traefik only overwrites the headers the auth proxy returns, a `Remote-User` header sent by a browser would pass straight through. So with Authentik you must point the harness at Authentik's headers:
+
+```
+HARNESS_USER_HEADER=X-authentik-username
+HARNESS_GROUPS_HEADER=X-authentik-groups
+HARNESS_EMAIL_HEADER=X-authentik-email
+AUTH_MIDDLEWARE=authentik-auth@docker
+HARNESS_ALLOWED_USERS=<your authentik username>
+```
+
+In Authentik, create an application with a **Forward auth (domain level)** proxy provider for the harness URL on the embedded outpost, and bind a policy that only allows your user. Make sure the middleware's `authResponseHeaders` includes the three headers above. Steps 1 and 2 under Setup are for Authelia and can be skipped.
+
+Instead of pinning Traefik's IP on a busy shared network, you can give the harness its own small network that only Traefik joins:
+
+```sh
+docker network create --subnet 172.31.25.0/29 harness-proxy
+docker network connect --ip 172.31.25.2 harness-proxy traefik
+```
+
+and set `TRAEFIK_NETWORK=harness-proxy`, `HARNESS_TRUSTED_PROXIES=172.31.25.2/32`. Add the network to Traefik's compose file too, so it survives Traefik being recreated.
+
 ## Endpoints
 
 | Path | What it returns |
 | --- | --- |
 | `/` | Dashboard |
-| `/api/me` | Your Authelia identity |
+| `/api/me` | Your identity from the auth proxy |
 | `/api/providers` | Which model keys are loaded (never the keys themselves) |
 | `/api/audit?limit=50` | Recent audit entries |
 | `/api/audit/verify` | Whether the audit hash chain is intact |

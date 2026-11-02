@@ -66,3 +66,51 @@ def test_security_headers(client):
     assert "frame-ancestors 'none'" in r.headers["content-security-policy"]
     assert r.headers["x-frame-options"] == "DENY"
     assert r.headers["cache-control"] == "no-store"
+
+
+AUTHENTIK = {
+    "X-authentik-username": "akadmin",
+    "X-authentik-groups": "authentik Admins|homelab",
+    "X-authentik-email": "a@example.com",
+}
+
+
+def authentik_client(settings, **overrides):
+    s = replace(
+        settings,
+        allowed_users=frozenset({"akadmin"}),
+        user_header="X-authentik-username",
+        groups_header="X-authentik-groups",
+        email_header="X-authentik-email",
+        **overrides,
+    )
+    return client_for(s)
+
+
+def test_authentik_headers(settings):
+    r = authentik_client(settings).get("/api/me", headers=AUTHENTIK)
+    assert r.status_code == 200
+    assert r.json() == {"name": "akadmin", "groups": ["authentik Admins", "homelab"], "email": "a@example.com"}
+
+
+def test_authentik_mode_ignores_remote_user(settings):
+    # With Authentik, Remote-User is never set by the proxy, so a browser could
+    # forge it. It must not be accepted.
+    c = authentik_client(settings)
+    assert c.get("/api/me", headers={"Remote-User": "akadmin"}).status_code == 403
+
+
+def test_authentik_required_group_with_pipes(settings):
+    c = authentik_client(settings, required_group="homelab")
+    assert c.get("/api/me", headers=AUTHENTIK).status_code == 200
+    assert c.get("/api/me", headers={**AUTHENTIK, "X-authentik-groups": "other"}).status_code == 403
+
+
+def test_header_settings_from_env(monkeypatch):
+    from app.config import Settings
+
+    monkeypatch.setenv("HARNESS_USER_HEADER", "X-authentik-username")
+    monkeypatch.delenv("HARNESS_GROUPS_HEADER", raising=False)
+    s = Settings.from_env()
+    assert s.user_header == "X-authentik-username"
+    assert s.groups_header == "Remote-Groups"
